@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevKit Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid #21262d;
+      background: #161b22;
+      -webkit-app-region: drag;
+    }
+
+    header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      background: #da3633;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      min-width: 18px;
+      text-align: center;
+    }
+
+    .badge.zero { background: #30363d; color: #8b949e; }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      -webkit-app-region: no-drag;
+    }
+
+    .toolbar button {
+      background: #21262d;
+      color: #8b949e;
+      border: 1px solid #30363d;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .toolbar button:hover {
+      background: #30363d;
+      color: #e6edf3;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 24px;
+      background: #161b22;
+      border-bottom: 1px solid #21262d;
+      font-size: 12px;
+      color: #8b949e;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #3fb950;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .notifications {
+      padding: 8px 16px;
+      overflow-y: auto;
+      max-height: calc(100vh - 110px);
+    }
+
+    .notif {
+      display: flex;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      transition: background 0.15s;
+      border-left: 3px solid transparent;
+    }
+
+    .notif:hover { background: #161b22; }
+    .notif.unread { border-left-color: #58a6ff; }
+
+    .notif-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .notif-icon.failure { background: #da363322; }
+    .notif-icon.stall { background: #d2992222; }
+    .notif-icon.boundary { background: #f8514922; }
+    .notif-icon.complete { background: #3fb95022; }
+    .notif-icon.attention { background: #58a6ff22; }
+    .notif-icon.default { background: #30363d; }
+
+    .notif-body { flex: 1; min-width: 0; }
+
+    .notif-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
+
+    .notif-title {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .client-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .client-badge.vscode   { background: #0078d422; color: #58a6ff; }
+    .client-badge.cursor   { background: #a855f722; color: #d2a8ff; }
+    .client-badge.windsurf { background: #06b6d422; color: #56d4dd; }
+    .client-badge.terminal { background: #3fb95022; color: #3fb950; }
+
+    .notif-message {
+      font-size: 12px;
+      color: #8b949e;
+      line-height: 1.4;
+    }
+
+    .notif-path {
+      font-size: 11px;
+      color: #484f58;
+      margin-top: 2px;
+      font-family: 'SF Mono', Menlo, monospace;
+    }
+
+    .notif-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .notif-time {
+      font-size: 11px;
+      color: #484f58;
+      white-space: nowrap;
+    }
+
+    .focus-btn {
+      background: #21262d;
+      color: #58a6ff;
+      border: 1px solid #30363d;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .focus-btn:hover {
+      background: #58a6ff22;
+      border-color: #58a6ff44;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 80px 24px;
+      color: #484f58;
+    }
+
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty h2 { font-size: 16px; color: #8b949e; margin-bottom: 4px; }
+    .empty p { font-size: 13px; }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .notif.new { animation: slideIn 0.25s ease-out; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>
+      DevKit Dashboard
+      <span class="badge zero" id="badge">0</span>
+    </h1>
+    <div class="toolbar">
+      <button onclick="markAllRead()">Mark all read</button>
+      <button onclick="clearAll()">Clear</button>
+    </div>
+  </header>
+
+  <div class="status-bar">
+    <span><span class="status-dot"></span>Listening on port <span id="port">9717</span></span>
+    <span id="total-count">0 notifications</span>
+  </div>
+
+  <div class="notifications" id="list"></div>
+
+  <script>
+    const { invoke } = window.__TAURI__.core;
+    const { listen } = window.__TAURI__.event;
+
+    let notifications = [];
+
+    function iconFor(title) {
+      const t = (title || '').toLowerCase();
+      if (t.includes('fail'))      return { cls: 'failure',   icon: '!!' };
+      if (t.includes('stall'))     return { cls: 'stall',     icon: '~' };
+      if (t.includes('boundary'))  return { cls: 'boundary',  icon: '!!' };
+      if (t.includes('complete'))  return { cls: 'complete',  icon: 'ok' };
+      if (t.includes('attention') || t.includes('needs')) return { cls: 'attention', icon: '?' };
+      return { cls: 'default', icon: 'i' };
+    }
+
+    function clientLabel(client) {
+      switch (client) {
+        case 'vscode':   return 'VS Code';
+        case 'cursor':   return 'Cursor';
+        case 'windsurf': return 'Windsurf';
+        case 'terminal': return 'Terminal';
+        default:         return client || '';
+      }
+    }
+
+    function clientBadgeClass(client) {
+      if (['vscode', 'cursor', 'windsurf', 'terminal'].includes(client)) return client;
+      return 'terminal';
+    }
+
+    function shortPath(p) {
+      if (!p) return '';
+      // Show last 2 segments: "sources/nogal"
+      const parts = p.split('/').filter(Boolean);
+      return parts.length > 2 ? parts.slice(-2).join('/') : p;
+    }
+
+    function timeAgo(ts) {
+      const diff = Date.now() - new Date(ts).getTime();
+      const s = Math.floor(diff / 1000);
+      if (s < 60) return 'just now';
+      const m = Math.floor(s / 60);
+      if (m < 60) return `${m}m ago`;
+      const h = Math.floor(m / 60);
+      if (h < 24) return `${h}h ago`;
+      return `${Math.floor(h / 24)}d ago`;
+    }
+
+    function render(isNew) {
+      const list = document.getElementById('list');
+      const unread = notifications.filter(n => !n.read).length;
+
+      document.getElementById('badge').textContent = unread;
+      document.getElementById('badge').className = unread > 0 ? 'badge' : 'badge zero';
+      document.getElementById('total-count').textContent =
+        `${notifications.length} notification${notifications.length !== 1 ? 's' : ''}`;
+
+      if (notifications.length === 0) {
+        list.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">--</div>
+            <h2>No notifications yet</h2>
+            <p>Notifications from dev-kit hooks will appear here</p>
+          </div>`;
+        return;
+      }
+
+      list.innerHTML = notifications.map((n, i) => {
+        const { cls, icon } = iconFor(n.title);
+        const hasClient = n.client && n.client_app;
+        const badgeCls = clientBadgeClass(n.client);
+        const label = clientLabel(n.client);
+        const path = shortPath(n.client_path);
+
+        return `
+          <div class="notif ${n.read ? '' : 'unread'} ${i === 0 && isNew ? 'new' : ''}">
+            <div class="notif-icon ${cls}">${icon}</div>
+            <div class="notif-body">
+              <div class="notif-header">
+                <span class="notif-title">${esc(n.title)}</span>
+                ${hasClient ? `<span class="client-badge ${badgeCls}">${esc(label)}</span>` : ''}
+              </div>
+              <div class="notif-message">${esc(n.message)}</div>
+              ${path ? `<div class="notif-path">${esc(path)}</div>` : ''}
+            </div>
+            <div class="notif-right">
+              <div class="notif-time">${timeAgo(n.timestamp)}</div>
+              ${hasClient ? `<button class="focus-btn" onclick="focusClient(${i})">Open ${esc(label)}</button>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s || '';
+      return d.innerHTML;
+    }
+
+    async function focusClient(index) {
+      const n = notifications[index];
+      if (!n) return;
+      try {
+        await invoke('focus_client', {
+          client: n.client || '',
+          clientApp: n.client_app || '',
+          clientPath: n.client_path || '',
+        });
+      } catch (e) {
+        console.error('focus_client failed:', e);
+      }
+    }
+
+    async function markAllRead() {
+      await invoke('mark_all_read');
+      notifications.forEach(n => n.read = true);
+      render(false);
+    }
+
+    async function clearAll() {
+      await invoke('clear_notifications');
+      notifications = [];
+      render(false);
+    }
+
+    // Live updates from Rust backend
+    listen('new-notification', (event) => {
+      notifications.unshift(event.payload);
+      render(true);
+    });
+
+    // Refresh timestamps every 30s
+    setInterval(() => render(false), 30000);
+
+    // Initial load
+    (async () => {
+      try {
+        const port = await invoke('get_port');
+        document.getElementById('port').textContent = port;
+      } catch {}
+      notifications = await invoke('get_notifications');
+      render(false);
+    })();
+  </script>
+</body>
+</html>
