@@ -1,0 +1,148 @@
+#!/bin/bash
+# =============================================================================
+# worktree — Git worktree manager for claude-notify
+# =============================================================================
+# Usage:
+#   ./worktree new <branch>      Create a worktree for a feature branch
+#   ./worktree remove <branch>   Remove a worktree and prune
+#   ./worktree list              List active worktrees
+#   ./worktree sync              Re-sync .claude/ config into all worktrees
+# =============================================================================
+
+set -euo pipefail
+
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+WORKTREES_ROOT="$(dirname "$PROJECT_DIR")/claude-notify-worktrees"
+
+# --- Helpers ---
+
+log()  { echo "  $*"; }
+ok()   { echo "  ✓ $*"; }
+err()  { echo "  ✗ $*" >&2; exit 1; }
+warn() { echo "  ! $*" >&2; }
+
+# Sync .claude/ config from project root into a worktree
+sync_claude() {
+  local dest="$1"
+  local src_claude="$PROJECT_DIR/.claude"
+
+  [ -d "$src_claude" ] || return 0
+
+  mkdir -p "$dest/.claude"
+
+  # Copy settings.json (permissions, hooks)
+  if [ -f "$src_claude/settings.json" ]; then
+    cp "$src_claude/settings.json" "$dest/.claude/settings.json"
+    ok "Synced .claude/settings.json"
+  fi
+
+  # Symlink commands/ (so worktree always gets latest commands)
+  if [ -d "$src_claude/commands" ]; then
+    local real_cmds
+    real_cmds="$(cd "$src_claude/commands" && pwd -P)"
+    ln -sf "$real_cmds" "$dest/.claude/commands"
+    ok "Symlinked .claude/commands"
+  fi
+
+  # Copy CLAUDE.md if present
+  if [ -f "$PROJECT_DIR/CLAUDE.md" ]; then
+    cp "$PROJECT_DIR/CLAUDE.md" "$dest/CLAUDE.md"
+    ok "Copied CLAUDE.md"
+  fi
+}
+
+# --- Commands ---
+
+cmd_new() {
+  local branch="${1:-}"
+  [ -n "$branch" ] || err "Usage: ./worktree new <branch>"
+
+  local worktree_path="$WORKTREES_ROOT/$branch"
+
+  if [ -d "$worktree_path" ]; then
+    warn "Worktree already exists: $worktree_path"
+    sync_claude "$worktree_path"
+    return 0
+  fi
+
+  # Create branch if it doesn't exist
+  if ! git -C "$PROJECT_DIR" show-ref --verify --quiet "refs/heads/$branch" 2>/dev/null; then
+    git -C "$PROJECT_DIR" branch "$branch"
+    ok "Created branch: $branch"
+  fi
+
+  mkdir -p "$(dirname "$worktree_path")"
+  git -C "$PROJECT_DIR" worktree add "$worktree_path" "$branch"
+  ok "Worktree created: $worktree_path"
+
+  sync_claude "$worktree_path"
+
+  echo ""
+  echo "  Ready. Open Claude Code in:"
+  echo "  $worktree_path"
+}
+
+cmd_remove() {
+  local branch="${1:-}"
+  [ -n "$branch" ] || err "Usage: ./worktree remove <branch>"
+
+  local worktree_path="$WORKTREES_ROOT/$branch"
+
+  if [ ! -d "$worktree_path" ]; then
+    warn "Worktree not found: $worktree_path"
+    git -C "$PROJECT_DIR" worktree prune 2>/dev/null || true
+    return 0
+  fi
+
+  git -C "$PROJECT_DIR" worktree remove "$worktree_path" --force 2>/dev/null || {
+    warn "git worktree remove failed — forcing rm"
+    rm -rf "$worktree_path"
+  }
+  git -C "$PROJECT_DIR" worktree prune 2>/dev/null || true
+  ok "Removed worktree: $branch"
+}
+
+cmd_list() {
+  git -C "$PROJECT_DIR" worktree list
+}
+
+cmd_sync() {
+  # Re-sync .claude/ into every active worktree (excluding the main one)
+  local synced=0
+  while IFS= read -r line; do
+    local wt_path
+    wt_path="$(echo "$line" | awk '{print $1}')"
+    # Skip the main worktree
+    [ "$wt_path" = "$PROJECT_DIR" ] && continue
+    [ -d "$wt_path" ] || continue
+    log "Syncing $wt_path ..."
+    sync_claude "$wt_path"
+    synced=$((synced + 1))
+  done < <(git -C "$PROJECT_DIR" worktree list 2>/dev/null)
+
+  [ $synced -gt 0 ] && ok "Synced $synced worktree(s)" || log "No active worktrees to sync"
+}
+
+# --- Dispatch ---
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+  new)    cmd_new "$@" ;;
+  remove) cmd_remove "$@" ;;
+  list)   cmd_list ;;
+  sync)   cmd_sync ;;
+  *)
+    echo "Usage: ./worktree <command> [args]"
+    echo ""
+    echo "Commands:"
+    echo "  new <branch>      Create a worktree for a feature branch"
+    echo "  remove <branch>   Remove a worktree and prune"
+    echo "  list              List active worktrees"
+    echo "  sync              Re-sync .claude/ config into all worktrees"
+    echo ""
+    echo "Worktrees are created at: $(dirname "$PROJECT_DIR")/claude-notify-worktrees/<branch>"
+    exit 1
+    ;;
+esac
