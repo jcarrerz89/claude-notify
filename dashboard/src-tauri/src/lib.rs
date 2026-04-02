@@ -112,21 +112,20 @@ fn focus_client(client: String, client_app: String, client_path: String) -> Resu
 
     match client.as_str() {
         "vscode" | "cursor" | "windsurf" => {
-            // For IDE clients: use their CLI to open/focus the workspace
-            let cli = match client.as_str() {
-                "cursor" => "cursor",
-                "windsurf" => "windsurf",
-                _ => "code",
+            // Use `open -a <App> <path>` — works from app bundles where CLI tools
+            // like `code` are not on the restricted macOS PATH.
+            let app_name = match client.as_str() {
+                "cursor"   => "Cursor",
+                "windsurf" => "Windsurf",
+                _          => "Visual Studio Code",
             };
 
             if !client_path.is_empty() {
-                // Open the workspace — this focuses the window if already open
-                Command::new(cli)
-                    .arg(&client_path)
+                Command::new("open")
+                    .args(["-a", app_name, &client_path])
                     .spawn()
-                    .map_err(|e| format!("Failed to launch {}: {}", cli, e))?;
+                    .map_err(|e| format!("Failed to open {}: {}", app_name, e))?;
             } else {
-                // Fallback: just activate the app via osascript
                 activate_app(&client_app)?;
             }
         }
