@@ -112,19 +112,22 @@ fn focus_client(client: String, client_app: String, client_path: String) -> Resu
 
     match client.as_str() {
         "vscode" | "cursor" | "windsurf" => {
-            // Use `open -a <App> <path>` — works from app bundles where CLI tools
-            // like `code` are not on the restricted macOS PATH.
-            let app_name = match client.as_str() {
-                "cursor"   => "Cursor",
-                "windsurf" => "Windsurf",
-                _          => "Visual Studio Code",
+            let cli = match client.as_str() {
+                "cursor"   => "cursor",
+                "windsurf" => "windsurf",
+                _          => "code",
             };
 
             if !client_path.is_empty() {
-                Command::new("open")
-                    .args(["-a", app_name, &client_path])
+                // Augment PATH so CLI tools installed in common locations are found
+                // even when launched from a Tauri app bundle (which gets a minimal PATH).
+                let base_path = std::env::var("PATH").unwrap_or_default();
+                let full_path = format!("/usr/local/bin:/opt/homebrew/bin:{}", base_path);
+                Command::new(cli)
+                    .arg(&client_path)
+                    .env("PATH", full_path)
                     .spawn()
-                    .map_err(|e| format!("Failed to open {}: {}", app_name, e))?;
+                    .map_err(|e| format!("Failed to launch {}: {}", cli, e))?;
             } else {
                 activate_app(&client_app)?;
             }
