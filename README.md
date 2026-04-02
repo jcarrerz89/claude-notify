@@ -54,21 +54,24 @@ claude-notify/
 
 ## Quick start
 
-### 1. Install the notification hook into your project
+### 1. Install the notification hook
+
+**Global install** (recommended — fires for every Claude Code session on this machine):
 
 ```bash
 git clone https://github.com/jcarrerz89/claude-notify.git
 cd claude-notify
-./install.sh /path/to/your/project
+./install.sh --global
 ```
 
-This copies `hooks/notify.sh` into `<project>/.claude/hooks/` and wires the `Notification` event in `.claude/settings.json`.
+This copies `hooks/notify.sh` to `~/.claude/hooks/` and wires the `Notification` event in `~/.claude/settings.json`.
 
-Or install into the current directory:
+**Per-project install** (fires only for a specific project):
 
 ```bash
-cd /path/to/your/project
-/path/to/claude-notify/install.sh
+./install.sh /path/to/your/project
+# or from inside the project:
+cd /path/to/your/project && /path/to/claude-notify/install.sh
 ```
 
 ### 2. (Optional) Run the dashboard
